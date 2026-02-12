@@ -163,6 +163,16 @@ def run_whisper_job(job):
     with rp_debugger.LineTimer('cleanup_step'):
         rp_cleanup.clean(['input_objects'])
 
+    # Strip bulky fields from segments to reduce payload size
+    # (tokens, words, etc. aren't needed for SRT/text output)
+    if 'segments' in whisper_results:
+        keep_keys = {'id', 'start', 'end', 'text', 'seek', 'temperature',
+                      'avg_logprob', 'compression_ratio', 'no_speech_prob'}
+        whisper_results['segments'] = [
+            {k: v for k, v in seg.items() if k in keep_keys}
+            for seg in whisper_results['segments']
+        ]
+
     # Check for R2 config - from request input or environment
     r2_config = None
     if job_input.get('s3Config'):
